@@ -1,49 +1,3 @@
-	var Snug_Babies = {};
-
-	var BabyTrackInitialPage = {
-		NONE: 0,
-		WELCOME_POST: 1,
-		POSTED_RESULTS_TABLE: 2
-	}
-
-	var BabyTrackMode = {
-		NONE: 0,
-		CREATE_NEW_PERSON: 1,
-		ADD_EVENT_WIZARD_NEW_PERSON: 2,
-		ADD_EVENT_WIZARD_NEW_ACTIVITY: 3,
-		CHOOSE_EXISTED_PERSON: 4,
-		ADD_FOOD_EVENT: 5,
-		ADD_DIAPER_EVENT: 6,
-		ADD_VITAMINS_EVENT: 7,
-		ADD_WEIGHT_EVENT: 8
-	}
-
-	var BabyTrackWindows = {
-		NONE: 0,
-		WELCOME_POST: 1,
-		POSTED_RESULTS_TABLE: 2,
-		CREATE_NEW_PERSON: 3,
-		ADD_EVENT_WIZARD_NEW_PERSON: 4,
-		ADD_EVENT_WIZARD_NEW_ACTIVITY: 5,
-		CHOOSE_EXISTED_PERSON: 6,
-		ADD_FOOD_EVENT: 7,
-		ADD_DIAPER_EVENT: 8,
-		ADD_VITAMINS_EVENT: 9,
-		ADD_WEIGHT_EVENT: 10
-	}
-
-	var mode = BabyTrackMode.NONE;
-	var initialPage;
-	var previousWindow = BabyTrackWindows.NONE;
-	//var currentWindow; // DOM object
-
-	var windowsAnimationOver = false;
-
-	var MAX_PAGE_AMOUNT_COUNT = 8;
-	var current_baby;
-	var date;
-	var needToCorrectInputs = false;
-
 (function($, undefined){
 
 	function SnugBabyPerson(nickname, birthday, avatarType, color, avatarImg){
@@ -52,6 +6,8 @@
 		this.avatarType = avatarType;
 		this.color = color;
 		this.avatarImg = avatarImg;
+		this.gender = "FEMALE";				//disabled for now, set to "FEMALE" by default
+		
 	}
 
 	SnugBabyPerson.prototype.toString = function() {
@@ -63,11 +19,67 @@
 
 	SnugBabyPerson.prototype.submit = function(){
 
-		if (typeof listDemo === 'undefined')
-			return false;
+		SnugBabies.set(this.nickname.toUpperCase(),{
+			"NAME" : this.nickname,
+			"GENDER": this.gender,
+			"BIRTHDAY": this.birthday,
+			"AVATAR": this.avatarImg,
+			"COLOR_SCHEME": this.color
+		});
+		
+		switch(this.activity.toUpperCase()){
+			case "FOOD":
+				SnugActivities.set("FOOD",{
+					"TYPE": this.activityType,
+					"AMOUNT": this.notes,
+					"DURATION": this.notes
+				});
+			break;
+			case "DIAPER":
+				SnugActivities.set("DIAPER",{
+					"STOOL": this.notes
+				});
+			break;
+		}
+		
+		var obj = {
+			"Person": SnugBabies.get(this.nickname.toUpperCase()), 	
+			"Activity": SnugActivities.get(this.activity.toUpperCase())
+		}
 
-		listDemo.push(this);
-		Snug_Babies = listDemo.asArray();
+		var newday = this.submitDate.split(/,\s?/g)[0].replace(/\s/g,"").toUpperCase();		//Has to be eg: "MONDAY"
+		var newmonth = this.submitDate.split(/,\s?/g)[1].replace(/\s/g,",").toUpperCase();	//Has to be eg: "MARCH,11"
+		var newyear = this.submitDate.split(/,\s?/g)[2].replace(/\s/g,"").toUpperCase();	//Has to be eg: "2015"	
+		var newtime = this.submitTime.replace(/[\s\:]/g,",").toUpperCase();					//Has to be eg: "12,40,PM"
+
+		var year = SnugEvents.get(newyear);
+		if (year){
+			var month = year.get(newmonth);
+
+			if (month){
+				var day = month.get(newday);
+
+				if (day){
+
+					var time = day.get(newtime);
+					if (time){
+						var persons = time.get("Persons");
+						persons.push(obj);
+					}else{
+						//day.set(newtime, sbPersons);
+						//day.get(newtime).get("Persons").clear();
+						//day.get(newtime).get("Persons").push(obj);
+					}
+				}else{
+				
+				}
+			}else{
+
+			}
+		}
+		else{
+
+		}
 	}
 
 	SnugBabyPerson.prototype.addToTable = function(table){
@@ -87,7 +99,7 @@
 						.find("tr.table_row_baby_data")
 						.last()
 						.find("td.table_avatar")
-						.html(self.avatarImg);
+						.html("<img src='" + self.avatarImg + "' />");
 
 					//making the border around the default avatar
 					if (self.avatarType == "type1")
@@ -114,7 +126,7 @@
 						.find("tr.table_row_baby_data")
 						.last()
 						.find("td.table_baby_activity")
-						.html( self.activityImg );
+						.html( "<img src='" + self.activityImg + "' />");
 
 					$(selector)
 						.find("tr.table_row_baby_data")
@@ -160,14 +172,16 @@
 	    var file = files[0];
 	    var imageType = /image.*/;
 	    
-	    if (!file.type.match(imageType) || files.length != 1) {
-	      return;
-	    }
+	    if (!file.type.match(imageType) || files.length != 1)  
+	    	return;
 	    
 	    var img = document.createElement("img");
-	    img.classList.add("obj");
 	    img.file = file;
-	    $("#create_person_block").find("div[data-avatar-type='type3']").append(img); // Assuming that "preview" is a the div output where the content will be displayed.
+
+	    // Assuming that "preview" is the div output where the content will be displayed.
+	    $("#create_person_block")
+	    	.find("[data-avatar-type='type3']")
+	    	.append( img ); 
 	    
 	    var reader = new FileReader();
 	    reader.onload = (function(aImg) { return function(e) { aImg.src = e.target.result; }; })(img);
@@ -207,7 +221,7 @@
 
 						case "mouseover": 
 
-							$("#welcome_guide_block > section > p ~ img")
+							$("#welcome_guide_block > section > p + img")
 								.stop()
 								.animate({
 									"opacity": 1,
@@ -216,7 +230,7 @@
 
 						case "mouseout":
 
-							$("#welcome_guide_block > section > p ~ img")
+							$("#welcome_guide_block > section > p + img")
 								.stop()
 								.animate({
 									"opacity": 0,
@@ -258,24 +272,99 @@
 
 	}
 
+	function diaperWindowLogic(){
+		
+		mode = BabyTrackMode.ADD_DIAPER_EVENT;
+		previousWindow = BabyTrackWindows.ADD_EVENT_WIZARD_NEW_ACTIVITY;
+
+		
+		//setting the default value for the element if it's undefined
+		var nickname = (current_baby.nickname !== '') ?  current_baby.nickname : "a baby";
+
+		$("#diaper_content").find("h1").replaceWith("<h1>"+ nickname +"'s Diaper Content!</h1>");
+
+		$("#diaper_content > section > div > section[data-type='subactivity_diaper']")
+					.click(function(){
+
+						unselectOthers({window: "ADD_DIAPER_EVENT"}); 
+						$(this).find("div.subactivity_diaper").toggleClass("selected unselected");
+						$(this).find("input[type=radio]").prop("checked", true);
+					});
+
+		clearWindows({effect: "drop", speed: 500, direction: "left"});
+		var timer = setInterval(function(){
+			if(windowsAnimationOver){
+				$("#diaper_content").show("drop", {direction: "right"}, 400);
+				clearInterval(timer);
+			}
+		}, 10);
+		
+	}
+	
+	function foodWindowLogic(){
+
+		mode = BabyTrackMode.ADD_FOOD_EVENT;
+		previousWindow = BabyTrackWindows.ADD_EVENT_WIZARD_NEW_ACTIVITY;
+
+		var nickname = (current_baby.nickname !== '') ?  current_baby.nickname : "a baby";
+
+		$("#food_content").find("h1").replaceWith("<h1>What and how much did "+ nickname +" eat?</h1>");
+
+		$("#food_content > section > div > section[data-type='subactivity_food']")
+			.click(function(){
+				unselectOthers({window: "ADD_FOOD_EVENT"}); 
+				$(this).find("div.subactivity_food").toggleClass("selected unselected");
+				$(this).find("input[type=radio]").prop("checked", true);
+			});
+
+		clearWindows({effect: "drop", speed: 500, direction: "left"});
+		var timer = setInterval(function(){
+			if(windowsAnimationOver){
+				clearResults({window: "ADD_FOOD_EVENT"});
+				$("#food_content").show("drop", {direction: "right"}, 400);
+				clearInterval(timer);
+			}
+		}, 10);
+
+
+		//Allowing to input only numbers into textboxes
+		$( "#food_content" ).find( "input[name=food_amount], input[name=food_duration]" )
+			.keydown(function (event) {
+		        // Allow: backspace, delete, tab, escape, enter and .
+		        if ($.inArray(event.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
+		             // Allow: Ctrl+A
+		            (event.keyCode == 65 && event.ctrlKey === true) || 
+		             // Allow: home, end, left, right, down, up
+		            (event.keyCode >= 35 && event.keyCode <= 40)) {
+		                 // let it happen, don't do anything
+		                 return;
+		        }
+		        // Ensure that it is a number and stop the keypress
+		        if ((event.shiftKey || (event.keyCode < 48 || event.keyCode > 57)) && (event.keyCode < 96 || event.keyCode > 105)) {
+		            event.preventDefault();
+		        }
+		    });
+	}
+
 	function normalize(obj){
 		switch(obj.window){
 			case BabyTrackWindows.CREATE_NEW_PERSON:
 			break;
 
 			case BabyTrackWindows.POSTED_RESULTS_TABLE:
-				if(!$.isEmptyObject(Snug_Babies)){		//if there any information about baby's in the database
+				if(!SnugBabies.isEmpty()){		//if there any information about baby's in the database
 					//openChoosePersonWindow();
+					var selector = "#posted_results_table";
+					var babyData = '<tr class="table_row_baby_data">' +
+						'<td class="table_avatar"></td>' +
+						'<td class="table_baby_name">Name</td>' +
+						'<td class="table_baby_activity">Activity</td>' +
+						'<td class="table_feed_time">Time</td>' +
+						'<td class="table_notes">Notes</td>' +
+					'</tr>';
 					Snug_Babies.forEach(function(baby){
 
-						var selector = "#posted_results_table";
-						var babyData = '<tr class="table_row_baby_data">' +
-											'<td class="table_avatar"></td>' +
-											'<td class="table_baby_name">Name</td>' +
-											'<td class="table_baby_activity">Activity</td>' +
-											'<td class="table_feed_time">Time</td>' +
-											'<td class="table_notes">Notes</td>' +
-										'</tr>';
+						
 
 						$(selector).find("table > tbody").append(babyData);
 
@@ -283,7 +372,7 @@
 							.find("table tr.table_row_baby_data")
 							.last()
 							.find("td.table_avatar")
-							.html(baby.avatarImg);
+							.html("<img src='" + baby.avatarImg + "' />");
 
 						//making the border around the default avatar
 						if (baby.avatarType == "type1")
@@ -310,7 +399,8 @@
 							.find("table tr.table_row_baby_data")
 							.last()
 							.find("td.table_baby_activity")
-							.html(baby.activityImg );
+							.html( "<img src='" + baby.activityImg + "' />" );
+
 
 						$(selector)
 							.find("table tr.table_row_baby_data")
@@ -353,16 +443,17 @@
 			break;
 
 			case BabyTrackWindows.CHOOSE_EXISTED_PERSON:
-					if(!$.isEmptyObject(Snug_Babies)){		//if there any information about baby's in the database
+					if(!SnugBabies.isEmpty()){		//if there any information about baby's in the database
 						//openChoosePersonWindow();
 						$("#choose_person").find(".add_person_button").prevAll().empty();
 						Snug_Babies.forEach(function(_current_baby){
 							current_baby = _current_baby;
 
-							var newPersonAvatar = 	"<section data-type='avatar'>"+
+							var newPersonAvatar = 	
+							"<section data-type='avatar'>"+
 								"<div>"+
 									"<div class = 'avatar selected' data-avatar-type="+ current_baby.avatarType +">"+
-										current_baby.avatarImg+
+										"<img src='" + current_baby.avatarImg + "' />"+
 									"</div>"+
 									
 									"<label>"+
@@ -420,8 +511,6 @@
 						$("#choose_person").find("section[data-type='avatar']").first().find("input[type=radio]").prop("checked", true);
 					}
 					
-
-					
 			break;
 
 			case BabyTrackWindows.ADD_FOOD_EVENT:
@@ -430,179 +519,6 @@
 			case BabyTrackWindows.ADD_DIAPER_EVENT:
 			break;
 		}
-	}
-
-	//The following function are responsible for Activity Logic
-
-	function foodWindowLogic(){
-
-		mode = BabyTrackMode.ADD_FOOD_EVENT;
-		previousWindow = BabyTrackWindows.ADD_EVENT_WIZARD_NEW_ACTIVITY;
-
-		var nickname = (current_baby.nickname !== '') ?  current_baby.nickname : "a baby";
-
-		$("#food_content").find("h1").replaceWith("<h1>What and how much did "+ nickname +" eat?</h1>");
-
-		$("#food_content > section > div > section[data-type='subactivity_food']")
-			.click(function(){
-
-				unselectOthers({window: "ADD_FOOD_EVENT"}); 
-				$(this).find("div.subactivity_food").toggleClass("selected unselected");
-				$(this).find("input[type=radio]").prop("checked", true);
-			});
-
-		clearWindows({effect: "drop", speed: 500, direction: "left"});
-		var timer = setInterval(function(){
-			if(windowsAnimationOver){
-				clearResults({window: "ADD_FOOD_EVENT"});
-				$("#food_content").show("drop", {direction: "right"}, 400);
-				clearInterval(timer);
-			}
-		}, 10);
-
-
-		//Allowing to input only numbers into textboxes
-		$( "#food_content" ).find( "input[name=food_amount], input[name=food_duration]" )
-			.keydown(function (event) {
-		        // Allow: backspace, delete, tab, escape, enter and .
-		        if ($.inArray(event.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
-		             // Allow: Ctrl+A
-		            (event.keyCode == 65 && event.ctrlKey === true) || 
-		             // Allow: home, end, left, right, down, up
-		            (event.keyCode >= 35 && event.keyCode <= 40)) {
-		                 // let it happen, don't do anything
-		                 return;
-		        }
-		        // Ensure that it is a number and stop the keypress
-		        if ((event.shiftKey || (event.keyCode < 48 || event.keyCode > 57)) && (event.keyCode < 96 || event.keyCode > 105)) {
-		            event.preventDefault();
-		        }
-		    });
-	}
-
-	function diaperWindowLogic(){
-		
-		mode = BabyTrackMode.ADD_DIAPER_EVENT;
-		previousWindow = BabyTrackWindows.ADD_EVENT_WIZARD_NEW_ACTIVITY;
-
-		
-		//setting the default value for the element if it's undefined
-		var nickname = (current_baby.nickname !== '') ?  current_baby.nickname : "a baby";
-
-		$("#diaper_content").find("h1").replaceWith("<h1>"+ nickname +"'s Diaper Content!</h1>");
-
-		$("#diaper_content > section > div > section[data-type='subactivity_diaper']")
-					.click(function(){
-
-						unselectOthers({window: "ADD_DIAPER_EVENT"}); 
-						$(this).find("div.subactivity_diaper").toggleClass("selected unselected");
-						$(this).find("input[type=radio]").prop("checked", true);
-					});
-
-		clearWindows({effect: "drop", speed: 500, direction: "left"});
-		var timer = setInterval(function(){
-			if(windowsAnimationOver){
-				clearResults({window: "ADD_DIAPER_EVENT"});
-				$("#diaper_content").show("drop", {direction: "right"}, 400);
-				clearInterval(timer);
-			}
-		}, 10);
-	}
-
-	function vitaminsWindowLogic(){
-		
-		mode = BabyTrackMode.ADD_VITAMINS_EVENT;
-		previousWindow = BabyTrackWindows.ADD_EVENT_WIZARD_NEW_ACTIVITY;
-
-		
-		//setting the default value for the element if it's undefined
-		var nickname = (current_baby.nickname !== '') ?  current_baby.nickname : "a baby";
-
-		$("#vitamins_content").find("h1").replaceWith("<h1>"+ nickname +"'Vitamins type!</h1>");
-
-		$("#vitamins_content > section > div > section[data-type='subactivity_vitamin']")
-					.click(function(){
-
-						unselectOthers({window: "ADD_VITAMIN_EVENT"}); 
-						$(this).find("div.subactivity_diaper").toggleClass("selected unselected");
-						$(this).find("input[type=radio]").prop("checked", true);
-					});
-
-		clearWindows({effect: "drop", speed: 500, direction: "left"});
-		var timer = setInterval(function(){
-			if(windowsAnimationOver){
-				clearResults({window: "ADD_VITAMIN_EVENT"});
-				$("#vitamin_content").show("drop", {direction: "right"}, 400);
-				clearInterval(timer);
-			}
-		}, 10);
-
-
-		//Allowing to input only numbers into textboxes
-		$( "#vitamin_content" ).find( "input[name=vitamin_type], input[name=vitamin_type2" )
-			.keydown(function (event) {
-		        // Allow: backspace, delete, tab, escape, enter and .
-		        if ($.inArray(event.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
-		             // Allow: Ctrl+A
-		            (event.keyCode == 65 && event.ctrlKey === true) || 
-		             // Allow: home, end, left, right, down, up
-		            (event.keyCode >= 35 && event.keyCode <= 40)) {
-		                 // let it happen, don't do anything
-		                 return;
-		        }
-		        // Ensure that it is a number and stop the keypress
-		        if ((event.shiftKey || (event.keyCode < 48 || event.keyCode > 57)) && (event.keyCode < 96 || event.keyCode > 105)) {
-		            event.preventDefault();
-		        }
-		    });
-	}
-
-	function wieghtWindowLogic(){
-		
-		mode = BabyTrackMode.ADD_VITAMINS_EVENT;
-		previousWindow = BabyTrackWindows.ADD_EVENT_WIZARD_NEW_ACTIVITY;
-
-		
-		//setting the default value for the element if it's undefined
-		var nickname = (current_baby.nickname !== '') ?  current_baby.nickname : "a baby";
-
-		$("#vitamins_content").find("h1").replaceWith("<h1>"+ nickname +"'Vitamins type!</h1>");
-
-		$("#vitamins_content > section > div > section[data-type='subactivity_vitamin']")
-					.click(function(){
-
-						unselectOthers({window: "ADD_VITAMIN_EVENT"}); 
-						$(this).find("div.subactivity_diaper").toggleClass("selected unselected");
-						$(this).find("input[type=radio]").prop("checked", true);
-					});
-
-		clearWindows({effect: "drop", speed: 500, direction: "left"});
-		var timer = setInterval(function(){
-			if(windowsAnimationOver){
-				clearResults({window: "ADD_VITAMIN_EVENT"});
-				$("#vitamin_content").show("drop", {direction: "right"}, 400);
-				clearInterval(timer);
-			}
-		}, 10);
-
-
-		//Allowing to input only numbers into textboxes
-		$( "#vitamin_content" ).find( "input[name=vitamin_type], input[name=vitamin_type2" )
-			.keydown(function (event) {
-		        // Allow: backspace, delete, tab, escape, enter and .
-		        if ($.inArray(event.keyCode, [46, 8, 9, 27, 13, 110, 190]) !== -1 ||
-		             // Allow: Ctrl+A
-		            (event.keyCode == 65 && event.ctrlKey === true) || 
-		             // Allow: home, end, left, right, down, up
-		            (event.keyCode >= 35 && event.keyCode <= 40)) {
-		                 // let it happen, don't do anything
-		                 return;
-		        }
-		        // Ensure that it is a number and stop the keypress
-		        if ((event.shiftKey || (event.keyCode < 48 || event.keyCode > 57)) && (event.keyCode < 96 || event.keyCode > 105)) {
-		            event.preventDefault();
-		        }
-		    });
 	}
 
 
@@ -721,6 +637,7 @@
 			mode = BabyTrackMode.CHOOSE_EXISTED_PERSON;
 			previousWindow = BabyTrackWindows.CREATE_NEW_PERSON;
 		//////
+
 	}
 
 
@@ -766,6 +683,7 @@
 	}
 
 
+
 	function openSelectedActivity(){
 
 			try{
@@ -780,11 +698,11 @@
 			
 			date = new SnugBabyDayTime();
 
-			$("#diaper_content, #food_content, #weight_content, #vitamins_content")
+			$("#diaper_content, #food_content")
 				.find("input.datepicker")
-				.val(date.shortMonth + ", " + date.year);
+				.val(date.fullDay +", "+ date.fullMonth + ", " + date.year);
 
-			$("#diaper_content, #food_content, #weight_content, #vitamins_content")
+			$("#diaper_content, #food_content")
 				.find("input.timepicker")
 				.val(date.time);
 
@@ -799,10 +717,6 @@
 
 				case "weight":
 					break;
-
-				case "vitamins":
-					break;
-
 			}
 	}
 
@@ -859,7 +773,7 @@
 		var birthday = $("#create_person_block  input#person_birthday").val();											//should be loaded from a server
 		var avatarType =  $("#choose_person  .avatar.selected").attr("data-avatar-type");								//should be loaded from a server
 		var color =  $('select[name="colorpicker-regularfont"] + span > span[data-selected]').data("color");			//should be loaded from a server. 
-	 	var avatarImg = $("section[data-type='avatar']").find("div.avatar.selected").html();
+	 	var avatarImg = $("section[data-type='avatar']").find("div.avatar.selected img").attr("src");
 		current_baby = new SnugBabyPerson(nickname, birthday, avatarType, color, avatarImg);
 	}
 
@@ -976,21 +890,6 @@
 				var diaperType = $("#diaper_content").find(".subactivity_diaper.selected").attr("data-diaper-type");
 				notes = (diaperType == "peed") ?  "Peed" : "Pooped" ;
 				break;
-			
-			case "vitamins":
-				var vitamins_type1 = $("#vitamins_type1").find("input[name=vitamins_type1]").val();
-				var vitamins_type2 = $("#vitamins_type2").find("input[name=vitamins_type1]").val();
-
-				if (vitamins_type1 !== ""	&&	vitamins_type2 !== "")
-					notes = vitamins_type1 + "ml in " + food_duration + " ml";
-
-				if (vitamins_type1 !== ""	&& 	vitamins_type2 === "")
-					notes = vitamins_type1 + "ml";
-
-				if (food_amount === ""	&& 	vitamins_type2 !== "")
-					notes = vitamins_type2 + " ml";
-				break;
-
 		}
 
 		return notes;
@@ -1017,7 +916,7 @@
 					break;
 
 				case BabyTrackMode.ADD_FOOD_EVENT:
-					current_baby.activityImg = "<img src = 'images/bottle.png' />";
+					current_baby.activityImg = 'images/bottle.png';
 					current_baby.activity = "food";
 					current_baby.notes  = getDefaultNotes("food");
 
@@ -1030,7 +929,7 @@
 					break;
 
 				case BabyTrackMode.ADD_DIAPER_EVENT:
-					current_baby.activityImg = $("#diaper_content").find(".subactivity_diaper.selected[data-diaper-type]").html();
+					current_baby.activityImg = $("#diaper_content").find(".subactivity_diaper.selected[data-diaper-type] img").attr("src");
 					current_baby.activity = "diaper";
 					current_baby.notes = getDefaultNotes("diaper");
 					
@@ -1041,19 +940,6 @@
 
 					openPostedResultsWindowLogic();
 					break;
-
-				case BabyTrackMode.ADD_VITAMIN_EVENT:
-					current_baby.activityImg = $("#vitamins_content").find(".subactivity_vitamins.selected[data-vitamins-type]").html();
-					current_baby.activity = "vitamins";
-					current_baby.notes = getDefaultNotes("vitamins");
-					
-					current_baby.submitDate = $(".datepicker").val();
-					current_baby.submitTime = $(".timepicker").val();
-					current_baby.addToTable( $("#posted_results_table").find("table").html() );
-					current_baby.submit();
-
-					openPostedResultsWindowLogic();
-					break;	
 
 			}
 		});
@@ -1219,7 +1105,7 @@
 			authButtonState = undefined;	
 			var timer = setInterval(function(){
 				try{
-					if (typeof authButtonState !== 'undefined' && typeof listDemo !== 'undefined'){
+					if (typeof (authButtonState && SnugActivities && SnugBabies && SnugEvents) !== 'undefined'){
 						clearInterval(timer);
 						switch (authButtonState){
 							case "disabled": 
@@ -1302,52 +1188,6 @@
 		}, 10);
 	}
 
-
-
-
-	$(function(){
-
-		startGoogleDriveRealtime();
-		current_baby = new SnugBabyPerson();
-		setNextBackButtonsLogic();
-		otherEventsLogic();
-
-		//The timer exists until a list of Baby's Information is found
-		var timer_initPage = setInterval(function(){
-			if(typeof listDemo !== 'undefined'){
-
-				Snug_Babies = listDemo.asArray();
-				initialPage = $.isEmptyObject(Snug_Babies) ? BabyTrackInitialPage.WELCOME_POST : BabyTrackInitialPage.POSTED_RESULTS_TABLE;	
-				setInitialPage(initialPage, {effect: "fadeIn", speed: 800}, false);
-				normalize({window: BabyTrackWindows.POSTED_RESULTS_TABLE});
-				normalize({window: BabyTrackWindows.CHOOSE_EXISTED_PERSON});
-				clearInterval(timer_initPage);
-			}
-		}, 10);
-
-		//The timer exists until a 
-		var timer_auth = setInterval(function(){
-			try{
-				if (typeof authButtonState !== 'undefined'){
-					clearInterval(timer_auth);
-					switch (authButtonState){
-						case "disabled": 
-							//enabling add event button
-							$("#add_event_button").show(1000);	
-														
-						break;
-
-						case "enabled":
-							$("#authModal").modal("show");
-						break;
-					}
-				}
-			}catch(e){}
-		}, 10);
-
-		
-	});
-
 	function otherEventsLogic(){
 
 			$("#add_event_button").hide();
@@ -1415,6 +1255,54 @@
 		    $('select[name="colorpicker-regularfont"]').simplecolorpicker({theme: 'regularfont'});
 
 	}
+
+
+	//Activates once a tab had been loaded. Its just like document.onload()
+	$(function(){
+
+		startGoogleDriveRealtime();
+		current_baby = new SnugBabyPerson();
+		setNextBackButtonsLogic();
+		otherEventsLogic();
+
+		//The timer exists until a list of Baby's Information is found
+		var timer_initPage = setInterval(function(){
+			if(typeof(SnugActivities || SnugBabies || SnugEvents) !== 'undefined'){
+
+				//initialPage = SnugBabies.isEmpty() ? BabyTrackInitialPage.WELCOME_POST : BabyTrackInitialPage.POSTED_RESULTS_TABLE;	
+				initialPage = BabyTrackInitialPage.WELCOME_POST;	
+				
+				setInitialPage(initialPage, {effect: "fadeIn", speed: 1000}, false);
+				//normalize({window: BabyTrackWindows.POSTED_RESULTS_TABLE});
+				//normalize({window: BabyTrackWindows.CHOOSE_EXISTED_PERSON});
+				clearInterval(timer_initPage);
+			}
+		}, 10);
+
+		//The timer exists until a 
+		var timer_auth = setInterval(function(){
+			try{
+				if (typeof authButtonState !== 'undefined'){
+					clearInterval(timer_auth);
+					switch (authButtonState){
+						case "disabled": 
+							//enabling add event button
+							$("#add_event_button").show(1000);	
+														
+						break;
+
+						case "enabled":
+							$("#authModal").modal("show");
+						break;
+					}
+				}
+			}catch(e){}
+		}, 10);
+
+	$("#add_event_button").show(1000);	
+
+	});
+
 
 })(jQuery)
 
