@@ -6,7 +6,7 @@
 		/**
 		* Client ID from the console.
 		*/
-		clientId: '488687976561-cbn0sjmncb567hviggdetb3g84tb6ipk.apps.googleusercontent.com',
+		clientId: '132706467209-v9q1nahcan7gdbsmv069opc87eh9td78.apps.googleusercontent.com',
  
 		/**
 		* The ID of the button to click to authorize. Must be a DOM element ID.
@@ -97,9 +97,9 @@
 
 		console.log("array: " + array);
 		
-		retrieveAllFiles(function(result){
-			console.log(results);
-		});
+		//retrieveAllFiles(function(result){
+		//	console.log(results);
+		//});
 
 		var textarea = $("#textarea")[0];
 		textarea.value = array;
