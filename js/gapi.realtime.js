@@ -1,7 +1,5 @@
-
+	var listDemo;
 	var initialAppStart = false;
-	var realtimeLoader;
-	var DEBUG_MODE = true;
 
 	var realtimeOptions = {
 
@@ -9,23 +7,21 @@
 		* Client ID from the console.
 		*/
 		clientId: '132706467209-v9q1nahcan7gdbsmv069opc87eh9td78.apps.googleusercontent.com',
-
+ 
 		/**
 		* The ID of the button to click to authorize. Must be a DOM element ID.
 		*/
 		authButtonElementId: 'authorizeButton',
 
-		appId: '500599261050',
-
 		/**
 		* Function to be called when a Realtime model is first created.
 		*/
-		initializeModel: initializeModel,
+		initializeModel: initializeModel, 
 
 		/**
 		* Autocreate files right after auth automatically.
 		*/
-		autoCreate: false,
+		autoCreate: true,
 
 		/**
 		* The name of newly created Drive files.
@@ -52,17 +48,28 @@
 		/**
 		* Function to be called after authorization and before loading files.
 		*/
-		afterAuth: afterAuth // No action.
+		afterAuth: null // No action.
 	}
 
+	/*retrieveAllFiles(function(response){
+		console.log(response.toString());
+	});*/
+	
+	function initializeModel(model){
+		//if( gapi.drive.realtime.Model.isInitialized()){
+			var collaborativeList = model.createList();
+			model.getRoot().set("data_list", collaborativeList);
+		//}
+	}
 
 	/**
 	* Retrieve a list of File resources.
-	*
+	* 
 	* @param {Function} callback Function to call when the request is complete.
 	*/
 
 	function retrieveAllFiles(callback) {
+
 		var retrievePageOfFiles = function(request, result) {
 			request.execute(function(resp) {
 		  		result = result.concat(resp.items);
@@ -77,87 +84,38 @@
 				}
 			});
 		}
+
 		var initialRequest = gapi.client.drive.files.list();
 		retrievePageOfFiles(initialRequest, []);
 	}
 
-
-	function initializeModel(model){
-
-			model.getRoot().set("events", model.createMap());
-			model.getRoot().set("babies", model.createMap());
-			model.getRoot().set("activity", model.createMap());
-
-			model.getRoot().set("time", model.createMap()); 
-			model.getRoot().set("day", model.createMap());
-			model.getRoot().set("month", model.createMap());
-			model.getRoot().set("year", model.createMap());
-			model.getRoot().set("persons", model.createMap());
-			model.getRoot().set("listOfPersons", model.createList());
-	}
-
-	
-
-	function onFileLoaded(doc) {
+	function onFileLoaded(doc){
 		var model = doc.getModel();
-		SnugActivities = model.getRoot().get("activity");
-		SnugBabies = model.getRoot().get("babies");
-		SnugEvents = model.getRoot().get("events");
+		listDemo = model.getRoot().get("data_list");
+		var array = listDemo.asArray();
+		var length = listDemo.length;
 
-		var sbTime = model.getRoot().get("time");
-		var sbYear = model.getRoot().get("year");
-		var sbMonth = model.getRoot().get("month");
-		var sbDay = model.getRoot().get("day");
-		sbPersons = model.getRoot().get("persons");
-		var listOfPersons = model.getRoot().get("listOfPersons");
-
-		SnugBabies.set("ANDREW", {
-			"NAME" : "Andrew",
-			"GENDER": "Male",
-			"BIRTHDAY": "March 11, 1996",
-			"AVATAR": "image1.png",
-			"COLOR_SCHEME": "red"
-		});
+		console.log("array: " + array);
 		
-		SnugActivities.set("FOOD",{
-				"TYPE": "BF",
-				"AMOUNT": "20ml",
-				"DURATION": "10min"
-		});		
+		//retrieveAllFiles(function(result){
+		//	console.log(results);
+		//});
 
-		SnugEvents.set( "2015", sbMonth);
-			sbMonth.set( "MARCH,28", sbDay);
-			sbDay.set( "SATURDAY", sbTime);
-			sbTime.set( "1,05,PM", sbPersons);
-			sbPersons.set( "Persons", listOfPersons);
+		//var textarea = $("#textarea")[0];
+		//textarea.value = array;
 
-			listOfPersons.push({
-				"Person": SnugBabies.get("ANDREW"), 	
-				"Activity": SnugActivities.get("FOOD")
-			});
+		//var onListChange = function(event){
+		//	textarea.setAttribute('value', array);
+		//	console.log("TextArea value is " + textarea.value);
+		//}
+
+		listDemo.addEventListener(gapi.drive.realtime.EventType.VALUES_ADDED, onListChange);
+		listDemo.addEventListener(gapi.drive.realtime.EventType.VALUES_REMOVED, onListChange);
+		
+		onListChange();
 	}
 
-	function afterAuth (){
-		// only create/load files when no files were loaded initialy
-		gapi.client.load('drive', 'v2', function () {
-			if (rtclient.params.fileIds && rtclient.params.fileIds.length) {
-				return;
-			}
-			retrieveAllFiles(function (files) {
-				if (files.length === 0) {
-					// create new file
-					realtimeLoader.createNewFileAndRedirect();
-				} else {
-					// get last file and use it
-					// TODO: add dialog to select files
-					var file = files[files.length - 1];
-					realtimeLoader.redirectTo([file.id], realtimeLoader.authorizer.userId);
-				}
-			});
-		});
-	}
-
-	function startGoogleDriveRealtime() {
-		realtimeLoader = new rtclient.RealtimeLoader(realtimeOptions);
-		realtimeLoader.start();
+	function startGoogleDriveRealtime(){
+		var realtimeLoader = new rtclient.RealtimeLoader(realtimeOptions);
+      	realtimeLoader.start();
 	}
